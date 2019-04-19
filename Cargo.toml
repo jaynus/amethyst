@@ -19,7 +19,7 @@ license = "MIT/Apache-2.0"
 travis-ci = { repository = "amethyst/amethyst", branch = "master" }
 
 [features]
-default = ["animation", "audio", "locale", "network"]
+default = ["animation", "audio", "locale", "network", "scripting"]
 
 animation = [
     "amethyst_animation"
@@ -38,6 +38,11 @@ network = [
     "amethyst_network"
 ]
 
+scripting = [
+    "amethyst_script",
+    "amethyst_script_gen",
+]
+
 profiler = [
     "thread_profiler",
     "thread_profiler/thread_profiler",
@@ -52,6 +57,7 @@ profiler = [
     "amethyst_renderer/profiler",
     "amethyst_ui/profiler",
     "amethyst_utils/profiler",
+    "amethyst_script/profiler"
 ]
 nightly = [
     "amethyst_animation/nightly",
@@ -65,6 +71,7 @@ nightly = [
     "amethyst_input/nightly",
     "amethyst_ui/nightly",
     "amethyst_utils/nightly",
+    "amethyst_script/nightly"
 ]
 sdl_controller = [
     "amethyst_input/sdl_controller",
@@ -97,6 +104,9 @@ amethyst_renderer = { path = "amethyst_renderer", version = "0.10.0" }
 amethyst_input = { path = "amethyst_input", version = "0.6.0" }
 amethyst_ui = { path = "amethyst_ui", version = "0.5.0" }
 amethyst_utils = { path = "amethyst_utils", version = "0.5.0" }
+amethyst_script = { path = "amethyst_script", version = "0.1.0", optional = true }
+amethyst_script_gen = { path = "amethyst_script_gen", version = "0.1.0", optional = true }
+
 crossbeam-channel = "0.3.1"
 derivative = "1.0"
 fern = { version = "0.5", features = ["colored"] }
@@ -288,3 +298,7 @@ path = "examples/simple_image/main.rs"
 [[example]]
 name = "auto_fov"
 path = "examples/auto_fov/main.rs"
+
+[[example]]
+name = "scripting"
+path = "examples/scripting/main.rs"

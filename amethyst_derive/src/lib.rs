@@ -38,3 +38,4 @@ pub fn widget_id_derive(input: TokenStream) -> TokenStream {
     let gen = widget_id::impl_widget_id(&ast);
     gen.into()
 }
+

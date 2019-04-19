@@ -1,0 +1,29 @@
+[package]
+name = "amethyst_script_derive"
+version = "0.1.0"
+authors = ["Walter Pearce <jaynus@gmail.com>"]
+edition = "2018"
+description = "High-level rendering engine with multiple backends"
+exclude = ["examples/*"]
+keywords = ["game", "engine", "scripting", "amethyst"]
+categories = ["scripting"]
+
+documentation = "https://www.amethyst.rs/doc/latest/doc/amethyst_renderer/"
+homepage = "https://www.amethyst.rs/"
+repository = "https://github.com/amethyst/amethyst"
+
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+
+[badges]
+appveyor = { repository = "amethyst/amethyst", branch = "master" }
+travis-ci = { repository = "amethyst/amethyst" }
+
+[dependencies]
+proc-macro2 = "0.4"
+syn = { version = "0.15", features = ["full"] }
+quote = "0.6"
+cbindgen = "0.8"
+
+[lib]
+proc-macro = true

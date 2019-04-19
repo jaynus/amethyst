@@ -1,0 +1,32 @@
+[package]
+name = "amethyst_script_gen"
+version = "0.1.0"
+authors = ["Walter Pearce <jaynus@gmail.com>"]
+edition = "2018"
+description = "High-level rendering engine with multiple backends"
+exclude = ["examples/*"]
+keywords = ["game", "engine", "scripting", "amethyst"]
+categories = ["scripting"]
+
+documentation = "https://www.amethyst.rs/doc/latest/doc/amethyst_renderer/"
+homepage = "https://www.amethyst.rs/"
+repository = "https://github.com/amethyst/amethyst"
+
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+
+[badges]
+appveyor = { repository = "amethyst/amethyst", branch = "master" }
+travis-ci = { repository = "amethyst/amethyst" }
+
+[features]
+profiler = [ "thread_profiler/thread_profiler" ]
+
+[dependencies]
+derivative = "1.0"
+log = "0.4.6"
+ron = "0.4"
+serde = { version = "1", features = ["derive"] }
+flatbuffers = { git = "https://github.com/jaynus/flatbuffers.git" }
+cbindgen = { path = "../../cbindgen" }
+thread_profiler = { version = "0.3", optional = true }

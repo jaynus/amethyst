@@ -1,0 +1,41 @@
+[package]
+name = "amethyst_script"
+version = "0.1.0"
+authors = ["Walter Pearce <jaynus@gmail.com>"]
+edition = "2018"
+description = "High-level rendering engine with multiple backends"
+exclude = ["examples/*"]
+keywords = ["game", "engine", "scripting", "amethyst"]
+categories = ["scripting"]
+
+documentation = "https://www.amethyst.rs/doc/latest/doc/amethyst_renderer/"
+homepage = "https://www.amethyst.rs/"
+repository = "https://github.com/amethyst/amethyst"
+
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+
+[badges]
+appveyor = { repository = "amethyst/amethyst", branch = "master" }
+travis-ci = { repository = "amethyst/amethyst" }
+
+[features]
+profiler = [ "thread_profiler/thread_profiler" ]
+nightly = [ "amethyst_core/nightly" ]
+
+[dependencies]
+amethyst_assets = { path = "../amethyst_assets", version = "0.6.0" }
+amethyst_core = { path = "../amethyst_core", version = "0.5.0" }
+amethyst_error = { path = "../amethyst_error", version = "0.1.0" }
+amethyst_script_derive = { path = "../amethyst_script_derive", version = "0.1.0" }
+derivative = "1.0"
+log = "0.4.6"
+ron = "0.4"
+serde = { version = "1", features = ["derive"] }
+flatbuffers = { git = "https://github.com/jaynus/flatbuffers.git" }
+proc-macro2 = "0.4"
+thread_profiler = { version = "0.3", optional = true }
+
+[build-dependencies]
+
+amethyst_script_gen = { path = "../amethyst_script_gen", version = "0.1.0" }
