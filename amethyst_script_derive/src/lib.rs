@@ -11,6 +11,12 @@ use syn::{
 use quote::quote;
 use quote::ToTokens;
 
+use flatbuffers as fb;
+
+#[path = "../schema/reflection_generated.rs"]
+mod fbs_reflection;
+use fbs_reflection::reflection as refl;
+
 fn has_ignore(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if let Some(path) = attr.path.segments.last() {
@@ -45,22 +51,17 @@ fn has_self(function: &FnDecl) -> bool {
     false
 }
 
-/// For paths, assume we can convert to an opaque pointer.
-fn needs_ref(ty: &syn::Type) -> bool {
-    false
-}
-
 /// For inputs, if the type is a primitive (as defined by cbindgen), we don't
 /// do anything. Otherwise, assume we will take it in as a pointer.
 fn convert_arg_type(syn::ArgCaptured { ref pat, ref ty, .. }: &syn::ArgCaptured) -> syn::FnArg {
     if ty.clone().into_token_stream().to_string().ends_with("str") {
         parse_quote!(#pat: *const c_char)
     } else {
-        if needs_ref(ty) {
-            parse_quote!(#pat: *const #ty)
-        } else {
+        //if needs_ref(ty) {
+        //    parse_quote!(#pat: *const #ty)
+        //} else {
             parse_quote!(#pat: #ty)
-        }
+        //}
     }
 }
 
@@ -110,6 +111,33 @@ fn generate_fn_ffi(functions: &[ItemFn], item: TokenStream) -> TokenStream {
             block: Box::new(body),
         };
         println!("Outputing: {:?}", ffi_func);
+
+
+        let name_str = ffi_func.ident.to_string();
+
+        // Emit the reflection data for this function
+        let mut fb_builder = fb::FlatBufferBuilder::new();
+        let name = fb_builder.create_string(&name_str);
+        let mut builder = refl::ForeignFunctionBuilder::new(&mut fb_builder);
+
+        builder.add_name(name);
+
+        // check and create the fb output dir
+        let cargo_target_dir = std::path::PathBuf::from(&std::env::var_os("OUT_DIR").unwrap());
+        let out_dir = cargo_target_dir.join("fbs");
+        let out_file = std::path::PathBuf::new().with_file_name(&name_str).with_extension("ffi");
+        println!("Create dir: {:?}", out_dir);
+        println!("out file: {:?}", out_dir.join(&out_file));
+
+        std::fs::create_dir(&out_dir);
+
+        // Write the FFI entry
+        let entry = builder.finish();
+        fb_builder.finish(entry, None);
+
+        use std::io::Write;
+        let mut f = std::fs::File::create(out_dir.join(&out_file)).unwrap();
+        f.write_all(fb_builder.finished_data()).unwrap();
 
         output = quote!{
             #output

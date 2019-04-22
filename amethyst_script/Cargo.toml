@@ -32,7 +32,6 @@ derivative = "1.0"
 log = "0.4.6"
 ron = "0.4"
 serde = { version = "1", features = ["derive"] }
-flatbuffers = { git = "https://github.com/jaynus/flatbuffers.git" }
 proc-macro2 = "0.4"
 thread_profiler = { version = "0.3", optional = true }
 

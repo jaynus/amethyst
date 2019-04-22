@@ -104,6 +104,14 @@ table Schema {
     services:[Service];             // Sorted.
 }
 
+table ForeignFunction {
+    name:string (required, key);
+    arguments:[Object];      // must be a table (not a struct)
+    retval:Object;
+    attributes:[KeyValue];
+    documentation:[string];
+}
+
 root_type Schema;
 
 file_identifier "BFBS";

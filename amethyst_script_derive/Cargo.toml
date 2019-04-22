@@ -24,6 +24,7 @@ proc-macro2 = "0.4"
 syn = { version = "0.15", features = ["full"] }
 quote = "0.6"
 cbindgen = "0.8"
+flatbuffers = { path = "../../flatbuffers/rust/flatbuffers" }
 
 [lib]
 proc-macro = true
