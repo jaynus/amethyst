@@ -13,6 +13,8 @@ use quote::ToTokens;
 
 use flatbuffers as fb;
 
+mod schema;
+
 #[path = "../schema/reflection_generated.rs"]
 mod fbs_reflection;
 use fbs_reflection::reflection as refl;
@@ -138,6 +140,9 @@ fn generate_fn_ffi(functions: &[ItemFn], item: TokenStream) -> TokenStream {
         use std::io::Write;
         let mut f = std::fs::File::create(out_dir.join(&out_file)).unwrap();
         f.write_all(fb_builder.finished_data()).unwrap();
+
+        // TODO: We have to recollect all build artifacts and recombine them every invocation
+
 
         output = quote!{
             #output

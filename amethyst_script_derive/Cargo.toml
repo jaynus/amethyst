@@ -25,6 +25,7 @@ syn = { version = "0.15", features = ["full"] }
 quote = "0.6"
 cbindgen = "0.8"
 flatbuffers = { path = "../../flatbuffers/rust/flatbuffers" }
+serde = { version = "1.0", features = ["derive"] }
 
 [lib]
 proc-macro = true
