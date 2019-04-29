@@ -15,9 +15,9 @@ fn main() -> Result<()> {
     amethyst::start_logger(Default::default());
 
     let game_data = GameDataBuilder::default()
-        .with_bundle(NetworkBundle::<String>::new(
-            "127.0.0.1:3455".parse().unwrap(),
-            vec![Box::new(FilterConnected::<String>::new())],
+        .with_bundle(NetworkBundle::<()>::new(
+            "127.0.0.1:23455".parse().unwrap(),
+            vec![Box::new(FilterConnected::<()>::new())],
         ))?
         .with(SpamReceiveSystem::new(), "rcv", &[]);
     let mut game = Application::build("./", State1)?
@@ -36,16 +36,14 @@ impl SimpleState for State1 {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         data.world
             .create_entity()
-            .with(NetConnection::<String>::new(
-                "127.0.0.1:3457".parse().unwrap(),
-            ))
+            .with(NetConnection::<()>::new("127.0.0.1:3457".parse().unwrap()))
             .build();
     }
 }
 
 /// A simple system that receives a ton of network events.
 struct SpamReceiveSystem {
-    pub reader: Option<ReaderId<NetEvent<String>>>,
+    pub reader: Option<ReaderId<NetEvent<()>>>,
 }
 
 impl SpamReceiveSystem {
@@ -55,7 +53,7 @@ impl SpamReceiveSystem {
 }
 
 impl<'a> System<'a> for SpamReceiveSystem {
-    type SystemData = (WriteStorage<'a, NetConnection<String>>,);
+    type SystemData = (WriteStorage<'a, NetConnection<()>>,);
     fn run(&mut self, (mut connections,): Self::SystemData) {
         let mut count = 0;
         for (conn,) in (&mut connections,).join() {
@@ -65,7 +63,6 @@ impl<'a> System<'a> for SpamReceiveSystem {
             for ev in conn.receive_buffer.read(self.reader.as_mut().unwrap()) {
                 count += 1;
                 match ev {
-                    NetEvent::Packet(packet) => info!("{}", packet.content()),
                     _ => {}
                 }
             }
