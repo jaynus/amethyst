@@ -1,6 +1,6 @@
 #![feature(custom_attribute)]
 #![allow(dead_code)]
-pub mod builder;
+
 pub mod schema;
 
 use amethyst_script_derive::script;
@@ -26,6 +26,11 @@ impl<T> TestReflection<T> {
 
     }
 
+    #[script(accessible)]
+    pub fn get_generic(&self, ) -> &T {
+        &self._generic
+    }
+
     #[script(ignore)]
     pub fn not_function(&self, ) {
 
@@ -44,6 +49,8 @@ impl<T> TestReflection<T> {
     fn not_pub_function(&self, ) {
 
     }
+
+
 }
 
 

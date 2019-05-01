@@ -1,4 +1,4 @@
-// First, we build the FFI bindings for all of amethyst
+// First, we iterate all of amethyst and find all our script implementations
 
 
 fn main() {

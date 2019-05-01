@@ -7,7 +7,6 @@ struct Example;
 impl EmptyState for Example {
     fn on_start(&mut self, _: StateData<'_, ()>) {
         println!("Running test build cbindgen..");
-        amethyst_script_gen::drivers::rlua::gen_rust_rlua_bindings(&[]);
 
 
     }

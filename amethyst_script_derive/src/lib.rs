@@ -3,7 +3,7 @@ use proc_macro::{TokenStream};
 use proc_macro2::Span;
 use syn::{
     AttributeArgs,
-    Item, ImplItem, Visibility, Type, Meta, NestedMeta, Attribute, ItemFn, ImplItemMethod, FnDecl, FnArg, Ident, LitStr, Token, Abi, Block,
+    Item, ImplItem, Visibility, Type, Meta, NestedMeta, Attribute, ItemFn, FnDecl, FnArg, Ident, LitStr, Abi,
     VisPublic,
     parse_macro_input,
     parse_quote
@@ -11,13 +11,6 @@ use syn::{
 use quote::quote;
 use quote::ToTokens;
 
-use flatbuffers as fb;
-
-mod schema;
-
-#[path = "../schema/reflection_generated.rs"]
-mod fbs_reflection;
-use fbs_reflection::reflection as refl;
 
 fn has_ignore(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
@@ -53,20 +46,6 @@ fn has_self(function: &FnDecl) -> bool {
     false
 }
 
-/// For inputs, if the type is a primitive (as defined by cbindgen), we don't
-/// do anything. Otherwise, assume we will take it in as a pointer.
-fn convert_arg_type(syn::ArgCaptured { ref pat, ref ty, .. }: &syn::ArgCaptured) -> syn::FnArg {
-    if ty.clone().into_token_stream().to_string().ends_with("str") {
-        parse_quote!(#pat: *const c_char)
-    } else {
-        //if needs_ref(ty) {
-        //    parse_quote!(#pat: *const #ty)
-        //} else {
-            parse_quote!(#pat: #ty)
-        //}
-    }
-}
-
 fn generate_fn_ffi(functions: &[ItemFn], item: TokenStream) -> TokenStream {
 
     let input = proc_macro2::TokenStream::from(item);
@@ -77,7 +56,7 @@ fn generate_fn_ffi(functions: &[ItemFn], item: TokenStream) -> TokenStream {
         let ffi_func_ident = Ident::new(&format!("ffi_{}", ident.to_string()), Span::call_site());
         let mut args = Vec::<proc_macro2::TokenStream>::new();
         let mut caller_args = Vec::<syn::Ident>::new();
-        let out = &function.decl.output;
+        let _out = &function.decl.output;
 
         function.decl.inputs.iter().for_each(|ref arg| {
             match arg {
@@ -112,44 +91,19 @@ fn generate_fn_ffi(functions: &[ItemFn], item: TokenStream) -> TokenStream {
             decl: function.decl.clone(),
             block: Box::new(body),
         };
-        println!("Outputing: {:?}", ffi_func);
+        //println!("Outputing: {:?}", ffi_func);
 
 
-        let name_str = ffi_func.ident.to_string();
-
-        // Emit the reflection data for this function
-        let mut fb_builder = fb::FlatBufferBuilder::new();
-        let name = fb_builder.create_string(&name_str);
-        let mut builder = refl::ForeignFunctionBuilder::new(&mut fb_builder);
-
-        builder.add_name(name);
-
-        // check and create the fb output dir
-        let cargo_target_dir = std::path::PathBuf::from(&std::env::var_os("OUT_DIR").unwrap());
-        let out_dir = cargo_target_dir.join("fbs");
-        let out_file = std::path::PathBuf::new().with_file_name(&name_str).with_extension("ffi");
-        println!("Create dir: {:?}", out_dir);
-        println!("out file: {:?}", out_dir.join(&out_file));
-
-        std::fs::create_dir(&out_dir);
-
-        // Write the FFI entry
-        let entry = builder.finish();
-        fb_builder.finish(entry, None);
-
-        use std::io::Write;
-        let mut f = std::fs::File::create(out_dir.join(&out_file)).unwrap();
-        f.write_all(fb_builder.finished_data()).unwrap();
-
-        // TODO: We have to recollect all build artifacts and recombine them every invocation
-
+        let _name_str = ffi_func.ident.to_string();
 
         output = quote!{
             #output
 
-            #ffi_func
+
         };
     }
+
+    println!("Result = {}", output.to_string());
 
     output.into()
 }

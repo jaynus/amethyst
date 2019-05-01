@@ -36,9 +36,5 @@ ron = "0.4"
 serde = { version = "1", features = ["derive"] }
 proc-macro2 = "0.4"
 thread_profiler = { version = "0.3", optional = true }
-flatbuffers = { path = "../../flatbuffers/rust/flatbuffers" }
 
 rlua = { version = "0.16.2", optional = true }
-
-[build-dependencies]
-amethyst_script_gen = { path = "../amethyst_script_gen", version = "0.1.0" }
