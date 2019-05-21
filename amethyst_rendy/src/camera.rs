@@ -22,8 +22,8 @@ impl Orthographic {
     ) -> Self {
         let mut matrix = Matrix4::<f32>::identity();
         matrix[(0, 0)] = 2.0 / (right - left);
-        matrix[(1, 1)] = 2.0 / (top - bottom);
-        matrix[(2, 2)] = -1.0 / (z_far - z_near);
+        matrix[(1, 1)] = -2.0 / (top - bottom);
+        matrix[(2, 2)] = 1.0 / (z_far - z_near);
         matrix[(0, 3)] = -(right + left) / (right - left);
         matrix[(1, 3)] = -(top + bottom) / (top - bottom);
         matrix[(2, 3)] = -z_near / (z_far - z_near);
@@ -32,7 +32,7 @@ impl Orthographic {
 
     #[inline]
     pub fn top(&self) -> f32 {
-        2.0 * matrix[]
+        unimplemented!()
     }
 
     #[inline]
@@ -113,9 +113,9 @@ impl Perspective {
 
         matrix[(0, 0)] = 1.0 / (aspect * tan_half_fovy);
         matrix[(1, 1)] = -1.0 / tan_half_fovy;
-        matrix[(2, 2)] = z_far / (z_near - z_far);
+        matrix[(2, 2)] = z_far / (z_far - z_near);
         matrix[(2, 3)] = -(z_near * z_far) / (z_far - z_near);
-        matrix[(3, 2)] = -1.0;
+        matrix[(3, 2)] = 1.0;
         matrix[(3, 3)] = 0.0;
 
         Self {
@@ -198,6 +198,9 @@ pub enum Projection {
     ///
     /// [pp]: https://en.wikipedia.org/wiki/Perspective_(graphical)
     Perspective(Perspective),
+
+    // Custom projection matrix
+    Matrix(Matrix4<f32>)
 }
 
 impl Projection {
@@ -222,14 +225,14 @@ impl Projection {
         Projection::Perspective(Perspective::new(aspect, fov, z_near, z_far))
     }
 
-    pub fn as_orthographic(&self) -> Result<failure::Error, &Orthographic> {
+    pub fn as_orthographic(&self) -> Result<&Orthographic, failure::Error> {
         match self {
             Projection::Orthographic(ref s) => Ok(s),
             _ => Err(failure::format_err!("Attempting to retrieve perspective from invalid projection"))
         }
     }
 
-    pub fn as_perspective(&self) -> Result<failure::Error, &Perspective> {
+    pub fn as_perspective(&self) -> Result<&Perspective, failure::Error> {
         match self {
             Projection::Perspective(ref s) => Ok(s),
             _ => Err(failure::format_err!("Attempting to retrieve perspective from invalid projection")),
@@ -240,6 +243,7 @@ impl Projection {
         match self {
             Projection::Orthographic(ref s) => s.as_matrix(),
             Projection::Perspective(ref s) => s.as_matrix(),
+            Projection::Matrix(ref s) => s,
 
         }
     }
@@ -248,6 +252,7 @@ impl Projection {
         match self {
             Projection::Orthographic(ref mut s) => s.as_matrix_mut(),
             Projection::Perspective(ref mut s) => s.as_matrix_mut(),
+            Projection::Matrix(ref mut s) => s,
 
         }
     }
@@ -265,6 +270,13 @@ impl From<Perspective> for Projection {
     }
 }
 
+// impl From<Perspective3> for Projection {
+//     fn from(proj: Perspective3) -> Self {
+//         // Get fovy, aspect and planes from nalgebra and constrcut new.
+//         Projection::Perspective(proj)
+//     }
+// }
+
 impl From<Matrix4<f32>> for Projection {
     fn from(proj: Matrix4<f32>) -> Self {
         Projection::Matrix(proj)
@@ -278,6 +290,22 @@ impl From<Projection> for Camera {
 }
 
 /// Camera struct.
+/// 
+/// Contains a projection matrix to convert from world/eye-space
+/// into normalized device coordinates.
+/// For rendy/gfx-hal these are y-down, x-right and y-away in range [0; 1]
+/// 
+/// World Coordinate system
+/// y
+/// |  z
+/// | /
+/// |/___x
+/// 
+/// NDC system
+/// |\¯¯¯x
+/// | \
+/// |  z
+/// y
 #[derive(Clone, Debug, serde::Deserialize, PartialEq, serde::Serialize)]
 pub struct Camera {
     /// Graphical projection of the camera.
@@ -354,44 +382,286 @@ pub struct ActiveCamera {
     pub entity: Entity,
 }
 
-/// Projection prefab
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct CameraPrefab(Projection);
+// /// Projection prefab
+// #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+// pub struct CameraPrefab(Projection);
 
-impl<'a> PrefabData<'a> for CameraPrefab {
-    type SystemData = WriteStorage<'a, Camera>;
-    type Result = ();
+// impl<'a> PrefabData<'a> for CameraPrefab {
+//     type SystemData = WriteStorage<'a, Camera>;
+//     type Result = ();
 
-    fn add_to_entity(
-        &self,
-        entity: Entity,
-        storage: &mut Self::SystemData,
-        _: &[Entity],
-        _: &[Entity],
-    ) -> Result<(), Error> {
-        storage.insert(entity, Camera { inner: self.0.clone() })?;
-        Ok(())
+//     fn add_to_entity(
+//         &self,
+//         entity: Entity,
+//         storage: &mut Self::SystemData,
+//         _: &[Entity],
+//         _: &[Entity],
+//     ) -> Result<(), Error> {
+//         storage.insert(entity, Camera { inner: self.0.clone() })?;
+//         Ok(())
+//     }
+// }
+
+// /// Active camera prefab
+// pub struct ActiveCameraPrefab(usize);
+
+// impl<'a> PrefabData<'a> for ActiveCameraPrefab {
+//     type SystemData = (Option<Write<'a, ActiveCamera>>,);
+//     type Result = ();
+
+//     fn add_to_entity(
+//         &self,
+//         _: Entity,
+//         system_data: &mut Self::SystemData,
+//         entities: &[Entity],
+//         _: &[Entity],
+//     ) -> Result<(), Error> {
+//         if let Some(ref mut cam) = system_data.0 {
+//             cam.entity = entities[self.0];
+//         }
+//         // TODO: if no `ActiveCamera` insert using `LazyUpdate`, require changes to `specs`
+//         Ok(())
+//     }
+// }
+
+
+
+#[cfg(test)]
+mod tests {
+    // Our world-space is Y-up, X-right, z-away
+    // Thus eye-space is y-up, x-right, z-behind
+    // Current render target is y-down, x-right, z-away
+    use super::*;
+    use amethyst_core::math::{Point3, Matrix4, Isometry3, Translation3, UnitQuaternion, Vector3, Vector4, convert};
+    use amethyst_core::Transform;
+
+    use approx::assert_ulps_eq;
+
+    
+    fn setup() -> (Transform, [Point3<f32>; 3], [Point3<f32>; 3]) {
+        // Test camera is positioned at (0,0,-3) in world space
+        // A camera without rotation points (0,0,-1)
+        let camera_transform : Transform = Transform::new(
+            Translation3::new(0.0, 0.0, -3.0), 
+            UnitQuaternion::from_axis_angle(&Vector3::y_axis(), 0.0),
+            // UnitQuaternion::from_axis_angle(&Vector3::y_axis(), std::f32::consts::PI),
+            [1.0, 1.0, 1.0].into());
+
+        let simple_points : [Point3<f32>; 3] = [
+            Point3::new(1.0, 0.0, 0.0),
+            Point3::new(0.0, 1.0, 0.0),
+            Point3::new(0.0, 0.0, 1.0)
+        ];
+
+        let simple_points_clipped : [Point3<f32>; 3] = [
+            Point3::new(-20.0, 0.0, 0.0),
+            Point3::new(0.0, -20.0, 0.0),
+            Point3::new(0.0, 0.0, -10.0)
+        ];
+        (camera_transform, simple_points, simple_points_clipped)
     }
-}
 
-/// Active camera prefab
-pub struct ActiveCameraPrefab(usize);
-
-impl<'a> PrefabData<'a> for ActiveCameraPrefab {
-    type SystemData = (Option<Write<'a, ActiveCamera>>,);
-    type Result = ();
-
-    fn add_to_entity(
-        &self,
-        _: Entity,
-        system_data: &mut Self::SystemData,
-        entities: &[Entity],
-        _: &[Entity],
-    ) -> Result<(), Error> {
-        if let Some(ref mut cam) = system_data.0 {
-            cam.entity = entities[self.0];
-        }
-        // TODO: if no `ActiveCamera` insert using `LazyUpdate`, require changes to `specs`
-        Ok(())
+    fn gatherer_calc_view_matrix(transform: Transform) -> Matrix4<f32> {
+        // let mat : Matrix4<f32> = convert(*transform.global_matrix());
+        // mat.try_inverse().expect("Unable to get inverse of camera transform")
+        convert(transform.view_matrix())
     }
+
+    #[test]
+    fn camera_matrix() {
+        let (camera_transform, _, _) = setup();
+        let iso = Isometry3::face_towards(
+            &Point3::new(0.0, 0.0, -3.0), 
+            &Point3::new(0.0, 0.0, 0.0), 
+            &Vector3::y_axis()
+        );
+        let our_iso : Matrix4<f32> = convert(camera_transform.isometry().to_homogeneous());
+        // Check camera isometry
+        assert_ulps_eq!(our_iso, iso.to_homogeneous());
+
+        let view_matrix = Isometry3::look_at_lh(
+            &Point3::new(0.0, 0.0, -3.0), 
+            &Point3::new(0.0, 0.0, 0.0), 
+            &Vector3::y_axis()
+        );
+        // Check view matrix.
+        // The view matrix is used to transfrom a point from world space to eye space.
+        // Changes the base of a vector from world origin to your eye.
+        let our_view : Matrix4<f32> = convert(camera_transform.view_matrix());
+        assert_ulps_eq!(our_view, view_matrix.to_homogeneous(), max_ulps = 10);
+
+        let our_inverse = gatherer_calc_view_matrix(camera_transform);
+        assert_ulps_eq!(our_inverse, view_matrix.to_homogeneous());
+
+        assert_ulps_eq!(our_inverse, our_view);
+    }
+
+
+    #[test]
+    fn perspective_orientation() {
+        let (camera_transform, simple_points, simple_points_clipped) = setup();
+
+        let proj = Projection::perspective(1280.0/720.0, std::f32::consts::FRAC_PI_3, 0.1, 100.0);
+        let view = gatherer_calc_view_matrix(camera_transform);
+
+        let mvp = proj.as_matrix() * view;
+
+        let x_axis = mvp * simple_points[0].to_homogeneous();
+        let y_axis = mvp * simple_points[1].to_homogeneous();
+        let z_axis = mvp * simple_points[2].to_homogeneous();
+
+        dbg!(x_axis);
+        assert!(x_axis[0] > 0.0);
+
+        // Y should be negative
+        dbg!(y_axis);
+        assert!(y_axis[1] < 0.0);
+
+        // Z should be in [0; 1]
+        dbg!(z_axis);
+        assert!(z_axis[2] >= 0.0);
+        assert!(z_axis[2] <= 1.0);
+        // Should be near the near plane at 0.0
+        assert!(z_axis[2] <= 0.5);
+
+        let x_axis_clipped = mvp * simple_points_clipped[0].to_homogeneous();
+        let y_axis_clipped = mvp * simple_points_clipped[1].to_homogeneous();
+        let z_axis_clipped = mvp * simple_points_clipped[2].to_homogeneous();
+
+        // Outside of frustum should be clipped
+        dbg!(x_axis_clipped);
+        assert!(x_axis_clipped[0] <= -1.0);
+        dbg!(y_axis_clipped);
+        assert!(y_axis_clipped[1] >= 1.0);
+
+        // Behind Camera should be clipped.
+        dbg!(z_axis_clipped);
+        assert!(z_axis_clipped[2] < 0.0);
+    }
+
+    // Todo: Add when we support reversed z
+    // #[test]
+    // fn perspective_orientation_reversed_z() {
+    //     unimplemented!()
+    // }
+
+    #[test]
+    fn orthographic_orientation() {
+        let (camera_transform, simple_points, _) = setup();
+
+        let proj = Projection::orthographic(-1280.0/2.0, 1280.0/2.0, -720.0/2.0, 720.0/2.0, 0.1, 100.0);
+        let view = gatherer_calc_view_matrix(camera_transform);
+
+        let mvp = proj.as_matrix() * view;
+
+        let x_axis = mvp * simple_points[0].to_homogeneous();
+        let y_axis = mvp * simple_points[1].to_homogeneous();
+        let z_axis = mvp * simple_points[2].to_homogeneous();
+
+        dbg!(x_axis);
+        assert!(x_axis[0] > 0.0);
+
+        // Y should be negative
+        dbg!(y_axis);
+        assert!(y_axis[1] < 0.0);
+
+        // Z should be in [0; 1]
+        dbg!(z_axis);
+        assert!(z_axis[2] >= 0.0);
+        assert!(z_axis[2] <= 1.0);
+    }
+
+    #[test]
+    fn perspective_depth_usage() {
+        let (camera_transform, simple_points, _) = setup();
+
+        let proj = Projection::perspective(1280.0/720.0, std::f32::consts::FRAC_PI_3, 0.1, 100.0);
+        let view = gatherer_calc_view_matrix(camera_transform);
+
+        let mvp = proj.as_matrix() * view;
+        // Nearest point = -distance to (0,0) + zNear
+        let near = Point3::new(0.0, 0.0, -2.9);
+        dbg!(view * near.to_homogeneous());
+        assert_ulps_eq!((mvp * near.to_homogeneous())[2], 0.0);
+
+        // Furthest point = -distance to (0,0) + zFar
+        let far = Point3::new(0.0, 0.0, 97.0);
+        dbg!(view * far.to_homogeneous());
+        assert_ulps_eq!((mvp * far.to_homogeneous())[2], 1.0);
+    }
+
+    #[test]
+    fn orthographic_depth_usage() {
+        let (camera_transform, simple_points, _) = setup();
+
+        let proj = Projection::orthographic(-1280.0/2.0, 1280.0/2.0, -720.0/2.0, 720.0/2.0, 0.1, 100.0);
+        let view = gatherer_calc_view_matrix(camera_transform);
+
+        let mvp = proj.as_matrix() * view;
+        // Nearest point = -distance to (0,0) + zNear
+        let near = Point3::new(0.0, 0.0, -2.9);
+        dbg!(view * near.to_homogeneous());
+        assert_ulps_eq!((mvp * near.to_homogeneous())[2], 0.0);
+
+        // Furthest point = -distance to (0,0) + zFar
+        let far = Point3::new(0.0, 0.0, 97.0);
+        dbg!(view * far.to_homogeneous());
+        assert_ulps_eq!((mvp * far.to_homogeneous())[2], 1.0);
+    }
+
+    #[test]
+    fn perspective_project_cube_centered() {
+        let (camera_transform, _, _) = setup();
+
+        // Cube in worldspace
+        let cube = [
+            Point3::new(1.0, 1.0, 1.0), Point3::new(-1.0, 1.0, 1.0), 
+            Point3::new(-1.0, -1.0, 1.0), Point3::new(1.0, -1.0, 1.0),
+
+            Point3::new(1.0, 1.0, -1.0), Point3::new(-1.0, 1.0, -1.0), 
+            Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, -1.0, -1.0),
+        ];
+
+        let proj = Projection::perspective(1280.0/720.0, std::f32::consts::FRAC_PI_3, 0.1, 100.0);
+        let view = gatherer_calc_view_matrix(camera_transform);
+
+        let mvp = proj.as_matrix() * view;
+
+        let result : Vec<Vector4<f32>> = cube.into_iter().map(|vertex| mvp * vertex.to_homogeneous()).collect();
+        // TODO: Calc correct result
+        // assert_ulps_eq!(result, Point());
+    }
+
+    #[test]
+    fn perspective_project_cube_off_centered_rotated() {
+        let (camera_transform, _, _) = setup();
+        // Cube in worldspace
+        let cube = [
+            Point3::new(1.0, 1.0, 1.0), Point3::new(-1.0, 1.0, 1.0), 
+            Point3::new(-1.0, -1.0, 1.0), Point3::new(1.0, -1.0, 1.0),
+
+            Point3::new(1.0, 1.0, -1.0), Point3::new(-1.0, 1.0, -1.0), 
+            Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, -1.0, -1.0),
+        ];
+        let proj = Projection::perspective(1280.0/720.0, std::f32::consts::FRAC_PI_3, 0.1, 100.0);
+        let view = gatherer_calc_view_matrix(camera_transform);
+
+        // Rotated x and y axis by 45°
+        let rotation = UnitQuaternion::from_euler_angles(std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4, 0.0);
+        let model = Isometry3::from_parts(Translation3::new(-1.0, 0.0, 0.0), rotation).to_homogeneous();
+
+        let mvp = proj.as_matrix() * view * model;
+
+        // Todo: Maybe check more cells of the model matrix
+        assert_ulps_eq!(model.column(0)[0], 0.70710678118);
+        assert_ulps_eq!(model.column(3)[0], -1.0);
+
+        let result : Vec<Vector4<f32>> = cube.iter().map(|vertex| mvp * vertex.to_homogeneous()).collect();
+
+        // TODO: Calc correct result
+        // assert_ulps_eq!(result, Point());
+    }
+
+    // // fn orthographic_project_cube_off_centered_rotated() {
+    // // }
 }
