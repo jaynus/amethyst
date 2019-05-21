@@ -324,8 +324,8 @@ impl Camera {
         Self::from(Projection::orthographic(
             -width / 2.0,
             width / 2.0,
-            height / 2.0,
             -height / 2.0,
+            height / 2.0,
             0.1,
             2000.0,
         ))
@@ -382,47 +382,47 @@ pub struct ActiveCamera {
     pub entity: Entity,
 }
 
-// /// Projection prefab
-// #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-// pub struct CameraPrefab(Projection);
+/// Projection prefab
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct CameraPrefab(Projection);
 
-// impl<'a> PrefabData<'a> for CameraPrefab {
-//     type SystemData = WriteStorage<'a, Camera>;
-//     type Result = ();
+impl<'a> PrefabData<'a> for CameraPrefab {
+    type SystemData = WriteStorage<'a, Camera>;
+    type Result = ();
 
-//     fn add_to_entity(
-//         &self,
-//         entity: Entity,
-//         storage: &mut Self::SystemData,
-//         _: &[Entity],
-//         _: &[Entity],
-//     ) -> Result<(), Error> {
-//         storage.insert(entity, Camera { inner: self.0.clone() })?;
-//         Ok(())
-//     }
-// }
+    fn add_to_entity(
+        &self,
+        entity: Entity,
+        storage: &mut Self::SystemData,
+        _: &[Entity],
+        _: &[Entity],
+    ) -> Result<(), Error> {
+        storage.insert(entity, Camera { inner: self.0.clone() })?;
+        Ok(())
+    }
+}
 
-// /// Active camera prefab
-// pub struct ActiveCameraPrefab(usize);
+/// Active camera prefab
+pub struct ActiveCameraPrefab(usize);
 
-// impl<'a> PrefabData<'a> for ActiveCameraPrefab {
-//     type SystemData = (Option<Write<'a, ActiveCamera>>,);
-//     type Result = ();
+impl<'a> PrefabData<'a> for ActiveCameraPrefab {
+    type SystemData = (Option<Write<'a, ActiveCamera>>,);
+    type Result = ();
 
-//     fn add_to_entity(
-//         &self,
-//         _: Entity,
-//         system_data: &mut Self::SystemData,
-//         entities: &[Entity],
-//         _: &[Entity],
-//     ) -> Result<(), Error> {
-//         if let Some(ref mut cam) = system_data.0 {
-//             cam.entity = entities[self.0];
-//         }
-//         // TODO: if no `ActiveCamera` insert using `LazyUpdate`, require changes to `specs`
-//         Ok(())
-//     }
-// }
+    fn add_to_entity(
+        &self,
+        _: Entity,
+        system_data: &mut Self::SystemData,
+        entities: &[Entity],
+        _: &[Entity],
+    ) -> Result<(), Error> {
+        if let Some(ref mut cam) = system_data.0 {
+            cam.entity = entities[self.0];
+        }
+        // TODO: if no `ActiveCamera` insert using `LazyUpdate`, require changes to `specs`
+        Ok(())
+    }
+}
 
 
 
@@ -494,6 +494,16 @@ mod tests {
         assert_ulps_eq!(our_inverse, view_matrix.to_homogeneous());
 
         assert_ulps_eq!(our_inverse, our_view);
+    }
+
+    #[test]
+    fn standard_2d() {
+        unimplemented!();
+    }
+
+    #[test]
+    fn standard_3d() {
+        unimplemented!();
     }
 
 
@@ -630,6 +640,7 @@ mod tests {
         let result : Vec<Vector4<f32>> = cube.into_iter().map(|vertex| mvp * vertex.to_homogeneous()).collect();
         // TODO: Calc correct result
         // assert_ulps_eq!(result, Point());
+        unimplemented!()
     }
 
     #[test]
@@ -660,8 +671,10 @@ mod tests {
 
         // TODO: Calc correct result
         // assert_ulps_eq!(result, Point());
+        unimplemented!()
     }
 
-    // // fn orthographic_project_cube_off_centered_rotated() {
-    // // }
+    fn orthographic_project_cube_off_centered_rotated() {
+        unimplemented!()
+    }
 }
