@@ -18,9 +18,14 @@ use amethyst_rendy::{
             render::{PrepareResult, RenderGroup, RenderGroupDesc},
             GraphContext, NodeBuffer, NodeImage,
         },
-        hal::{self, device::Device, format::Format, pso},
+        hal::{
+            self,
+            device::Device,
+            format::Format,
+            pso::{self, ShaderStageFlags},
+        },
         mesh::{AsVertex, VertexFormat},
-        shader::{Shader, ShaderKind, SourceLanguage, SpirvShader, StaticShaderInfo},
+        shader::{Shader, SpirvShader},
         texture::palette::load_from_srgba,
     },
     resources::Tint,
@@ -64,19 +69,17 @@ struct UiViewArgs {
 }
 
 lazy_static::lazy_static! {
-    static ref UI_VERTEX: SpirvShader = StaticShaderInfo::new(
-        concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/ui.vert"),
-        ShaderKind::Vertex,
-        SourceLanguage::GLSL,
+    static ref UI_VERTEX: SpirvShader = SpirvShader::new(
+        include_bytes!("../compiled/ui.vert.spv").to_vec(),
+        ShaderStageFlags::VERTEX,
         "main",
-    ).precompile().unwrap();
+    );
 
-    static ref UI_FRAGMENT: SpirvShader = StaticShaderInfo::new(
-        concat!(env!("CARGO_MANIFEST_DIR"), "/shaders/ui.frag"),
-        ShaderKind::Fragment,
-        SourceLanguage::GLSL,
+    static ref UI_FRAGMENT: SpirvShader = SpirvShader::new(
+        include_bytes!("../compiled/ui.frag.spv").to_vec(),
+        ShaderStageFlags::FRAGMENT,
         "main",
-    ).precompile().unwrap();
+    );
 }
 
 /// A UI drawing pass that draws UI elements and text in screen-space
@@ -204,12 +207,10 @@ impl<B: Backend> RenderGroup<B, Resources> for DrawUi<B> {
                     &self.white_tex,
                     hal::image::Layout::ShaderReadOnlyOptimal,
                 ),
-                self.textures.insert(
-                    factory,
-                    resources,
-                    glyphs_res.glyph_tex(),
-                    hal::image::Layout::General,
-                ),
+                glyphs_res.glyph_tex().and_then(|tex| {
+                    self.textures
+                        .insert(factory, resources, tex, hal::image::Layout::General)
+                }),
             ) {
                 changed = changed || white_changed || glyph_changed;
                 (white_tex_id, glyph_tex_id)

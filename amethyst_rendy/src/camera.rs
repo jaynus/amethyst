@@ -3,7 +3,7 @@
 use amethyst_assets::PrefabData;
 use amethyst_core::{
     ecs::prelude::{Component, Entity, HashMapStorage, Write, WriteStorage},
-    math::{Matrix4, Orthographic3, Perspective3},
+    math::{Matrix4, },
 };
 use amethyst_error::Error;
 
@@ -129,23 +129,13 @@ impl Perspective {
     }
 
     #[inline]
-    pub fn fov(&self) -> f32 {
-        unimplemented!()
-    }
-
-    #[inline]
-    pub fn fovx(&self) -> f32 {
-        unimplemented!()
-    }
-
-    #[inline]
     pub fn fovy(&self) -> f32 {
         (-1.0 / self.matrix[(1, 1)]).atan() * 2.0
     }
 
     #[inline]
     pub fn near(&self) -> f32 {
-        unimplemented!()
+        1.0 + self.matrix[(2,3)] / self.matrix[(2,2)]
     }
 
     #[inline]
@@ -193,14 +183,16 @@ pub enum Projection {
     /// An [orthographic projection][op].
     ///
     /// [op]: https://en.wikipedia.org/wiki/Orthographic_projection
+    #[serde(with = "serde_ortho")]
     Orthographic(Orthographic),
     /// A realistic [perspective projection][pp].
     ///
     /// [pp]: https://en.wikipedia.org/wiki/Perspective_(graphical)
+    #[serde(with = "serde_persp")]
     Perspective(Perspective),
-
-    // Custom projection matrix
-    Matrix(Matrix4<f32>)
+  
+    /// A raw matrix projection
+    Matrix(Matrix4<f32>),
 }
 
 impl Projection {
@@ -226,30 +218,29 @@ impl Projection {
     }
 
     pub fn as_orthographic(&self) -> Result<&Orthographic, failure::Error> {
-        match self {
+        match *self {
             Projection::Orthographic(ref s) => Ok(s),
-            _ => Err(failure::format_err!("Attempting to retrieve perspective from invalid projection"))
+            _ => Err(failure::format_err!("Attempting to retrieve orthographic from invalid projection"))
         }
     }
 
     pub fn as_perspective(&self) -> Result<&Perspective, failure::Error> {
-        match self {
+        match *self {
             Projection::Perspective(ref s) => Ok(s),
             _ => Err(failure::format_err!("Attempting to retrieve perspective from invalid projection")),
         }
     }
 
     pub fn as_matrix(&self) -> &Matrix4<f32> {
-        match self {
+        match *self {
             Projection::Orthographic(ref s) => s.as_matrix(),
             Projection::Perspective(ref s) => s.as_matrix(),
             Projection::Matrix(ref s) => s,
-
         }
     }
 
     pub fn as_matrix_mut(&mut self) -> &mut Matrix4<f32> {
-        match self {
+        match *self {
             Projection::Orthographic(ref mut s) => s.as_matrix_mut(),
             Projection::Perspective(ref mut s) => s.as_matrix_mut(),
             Projection::Matrix(ref mut s) => s,
@@ -425,21 +416,122 @@ impl<'a> PrefabData<'a> for ActiveCameraPrefab {
     }
 }
 
+mod serde_ortho {
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
 
+    #[derive(serde::Deserialize, serde::Serialize)]
+    struct Orthographic {
+        left: f32,
+        right: f32,
+        bottom: f32,
+        top: f32,
+        znear: f32,
+        zfar: f32,
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<super::Orthographic, D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        let v = Orthographic::deserialize(deserializer)?;
+        Ok(super::Orthographic::new(
+            v.left, v.right, v.bottom, v.top, v.znear, v.zfar,
+        ))
+    }
+
+    pub fn serialize<S>(proj: &super::Orthographic, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        Serialize::serialize(
+            &Orthographic {
+                left: proj.left(),
+                right: proj.right(),
+                bottom: proj.bottom(),
+                top: proj.top(),
+                znear: proj.near(),
+                zfar: proj.far(),
+            },
+            serializer,
+        )
+    }
+}
+
+mod serde_persp {
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    #[derive(serde::Deserialize, serde::Serialize)]
+    struct Perspective {
+        aspect: f32,
+        fovy: f32,
+        znear: f32,
+        zfar: f32,
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<super::Perspective, D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        let v = Perspective::deserialize(deserializer)?;
+        Ok(super::Perspective::new(v.aspect, v.fovy, v.znear, v.zfar))
+    }
+
+    pub fn serialize<S>(proj: &super::Perspective, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        Serialize::serialize(
+            &Perspective {
+                aspect: proj.aspect(),
+                fovy: proj.fovy(),
+                znear: proj.near(),
+                zfar: proj.far(),
+            },
+            serializer,
+        )
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    // Our world-space is Y-up, X-right, z-away
-    // Thus eye-space is y-up, x-right, z-behind
-    // Current render target is y-down, x-right, z-away
     use super::*;
+    use ron::{de::from_str, ser::to_string_pretty};
     use amethyst_core::math::{Point3, Matrix4, Isometry3, Translation3, UnitQuaternion, Vector3, Vector4, convert};
     use amethyst_core::Transform;
 
     use approx::assert_ulps_eq;
     use more_asserts::{assert_gt, assert_ge, assert_lt, assert_le};
 
-    
+    // TODO: this will be fixed after camera projection refactor
+    #[test]
+    fn test_orthographic_serde() {
+        let test_ortho = Projection::orthographic(0.0, 100.0, 10.0, 150.0, -5.0, 100.0);
+        println!("{}", to_string_pretty(&test_ortho, Default::default()).unwrap());
+
+        let de = from_str(&to_string_pretty(&test_ortho, Default::default()).unwrap()).unwrap();
+        assert_eq!(test_ortho, de);
+    }
+
+    // TODO: this will be fixed after camera projection refactor
+    #[test]
+    fn test_perspective_serde() {
+        let test_persp = Projection::perspective(1.7, std::f32::consts::FRAC_PI_3, 0.1, 1000.0);
+        println!("{}", to_string_pretty(&test_persp, Default::default()).unwrap());
+
+        let de = from_str(&to_string_pretty(&test_persp, Default::default()).unwrap()).unwrap();
+
+        assert_eq!(test_persp, de);
+    }
+
+    // Our world-space is Y-up, X-right, z-away
+    // Thus eye-space is y-up, x-right, z-behind
+    // Current render target is y-down, x-right, z-away
     fn setup() -> (Transform, [Point3<f32>; 3], [Point3<f32>; 3]) {
         // Test camera is positioned at (0,0,-3) in world space
         // A camera without rotation points (0,0,-1)
@@ -479,8 +571,8 @@ mod tests {
         assert_ulps_eq!(our_iso, iso.to_homogeneous());
 
         let view_matrix = Isometry3::look_at_lh(
-            &Point3::new(0.0, 0.0, -3.0), 
-            &Point3::new(0.0, 0.0, 0.0), 
+            &Point3::new(0.0, 0.0, -3.0),
+            &Point3::new(0.0, 0.0, 0.0),
             &Vector3::y_axis()
         );
         // Check view matrix.
@@ -536,7 +628,7 @@ mod tests {
         let x_axis = mvp * simple_points[0].to_homogeneous();
         let y_axis = mvp * simple_points[1].to_homogeneous();
         let z_axis = mvp * simple_points[2].to_homogeneous();
-
+      
         assert_gt!(x_axis[0], 0.0);
 
         // Y should be negative
@@ -561,7 +653,8 @@ mod tests {
     }
 
     // Todo: Add perspective_orientation_reversed_z when we support reversed z depth buffer.
-
+  
+  
     #[test]
     fn orthographic_orientation() {
         let (camera_transform, simple_points, _) = setup();
@@ -595,6 +688,7 @@ mod tests {
         let mvp = proj.as_matrix() * view;
         // Nearest point = -distance to (0,0) + zNear
         let near = Point3::new(0.0, 0.0, -2.9);
+      
         assert_ulps_eq!((mvp * near.to_homogeneous())[2], 0.0);
 
         // Furthest point = -distance to (0,0) + zFar
@@ -637,7 +731,7 @@ mod tests {
 
         let mvp = proj.as_matrix() * view;
 
-        let result : Vec<Vector4<f32>> = cube.into_iter().map(|vertex| mvp * vertex.to_homogeneous()).collect();
+        let _result : Vec<Vector4<f32>> = cube.into_iter().map(|vertex| mvp * vertex.to_homogeneous()).collect();
         // TODO: Calc correct result
         // assert_ulps_eq!(result, Point());
         unimplemented!()
@@ -673,8 +767,10 @@ mod tests {
         // assert_ulps_eq!(result, Point());
         unimplemented!()
     }
-
+  
+    #[test]
     fn orthographic_project_cube_off_centered_rotated() {
         unimplemented!()
     }
 }
+
