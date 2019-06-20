@@ -43,7 +43,7 @@ impl Progress for () {
 
 /// A progress tracker which is passed to the `Loader`
 /// in order to check how many assets are loaded.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ProgressCounter {
     errors: Arc<Mutex<Vec<AssetErrorMeta>>>,
     num_assets: usize,
