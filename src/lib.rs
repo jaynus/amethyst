@@ -57,7 +57,13 @@
 
 #[cfg(feature = "animation")]
 pub use amethyst_animation as animation;
+
+#[cfg(not(feature = "atelier"))]
 pub use amethyst_assets as assets;
+
+#[cfg(feature = "atelier")]
+pub use amethyst_atelier as assets;
+
 #[cfg(feature = "audio")]
 pub use amethyst_audio as audio;
 pub use amethyst_config as config;
