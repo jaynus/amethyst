@@ -3,7 +3,7 @@ use amethyst::{
     core::{
         geometry::Plane,
         math::{Point3, Vector2, Vector3},
-        Named, Parent, Transform, TransformBundle,
+        Named, Parent, Time, Transform, TransformBundle,
     },
     ecs::{
         Component, Entities, Entity, Join, LazyUpdate, NullStorage, Read, ReadExpect, ReadStorage,
@@ -226,6 +226,37 @@ impl<'s> System<'s> for CameraMovementSystem {
     }
 }
 
+struct MapMovementSystem {
+    pressed: bool,
+}
+impl Default for MapMovementSystem {
+    fn default() -> Self {
+        Self { pressed: false }
+    }
+}
+impl<'s> System<'s> for MapMovementSystem {
+    type SystemData = (
+        Entities<'s>,
+        Read<'s, Time>,
+        Read<'s, LazyUpdate>,
+        Read<'s, ActiveCamera>,
+        ReadExpect<'s, ScreenDimensions>,
+        ReadStorage<'s, Camera>,
+        WriteStorage<'s, Transform>,
+        ReadStorage<'s, TileMap<ExampleTile>>,
+        Read<'s, InputHandler<StringBindings>>,
+    );
+
+    fn run(
+        &mut self,
+        (entities, time, lazy, active_camera, dimensions, cameras, mut transforms, tilemaps, input): Self::SystemData,
+    ) {
+        for (map, transform) in (&tilemaps, &mut transforms).join() {
+            transform.rotate_2d(time.delta_seconds());
+        }
+    }
+}
+
 fn load_sprite_sheet(world: &mut World, png_path: &str, ron_path: &str) -> SpriteSheetHandle {
     let texture_handle = {
         let loader = world.read_resource::<Loader>();
@@ -417,6 +448,11 @@ fn main() -> amethyst::Result<()> {
             DrawSelectionSystem::default(),
             "DrawSelectionSystem",
             &["camera_switch"],
+        )
+        .with(
+            MapMovementSystem::default(),
+            "MapMovementSystem",
+            &["input_system"],
         )
         .with_bundle(
             RenderingBundle::<DefaultBackend>::new()
