@@ -34,8 +34,7 @@ impl CameraGatherer {
 
         // TODO: we do not support active camera atm because of migration
 
-        <(Read<Camera>, Read<Transform>)>::query()
-            .iter_entities(world)
+        unsafe { <(Read<Camera>, Read<Transform>)>::query().iter_entities_unchecked(world) }
             .nth(0)
             .map(|(e, _)| e)
     }
@@ -60,14 +59,12 @@ impl CameraGatherer {
                 active_camera
                     .entity
                     .and_then(|e| {
-                        camera_query
-                            .iter_entities(world)
+                        unsafe { camera_query.iter_entities_unchecked(world) }
                             .find(|(camera_entity, (_, _))| *camera_entity == e)
                             .map(|(_, (camera, transform))| (camera, transform))
                     })
                     .or_else(|| {
-                        camera_query
-                            .iter_entities(world)
+                        unsafe { camera_query.iter_entities_unchecked(world) }
                             .nth(0)
                             .map(|(e, (camera, transform))| (camera, transform))
                     })

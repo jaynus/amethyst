@@ -187,8 +187,7 @@ impl<B: Backend> PerImageEnvironmentSub<B> {
             .std140();
 
             let mut q1 = <(Read<Light>, Read<Transform>)>::query();
-            let point_lights = q1
-                .iter(world)
+            let point_lights = unsafe { q1.iter_unchecked(world) }
                 .filter_map(|(light, transform)| match &*light {
                     Light::Point(light) => Some(
                         pod::PointLight {
@@ -206,8 +205,7 @@ impl<B: Backend> PerImageEnvironmentSub<B> {
                 .take(MAX_POINT_LIGHTS);
 
             let mut all_lights = <(Read<Light>)>::query();
-            let dir_lights = all_lights
-                .iter(world)
+            let dir_lights = unsafe { all_lights.iter_unchecked(world) }
                 .filter_map(|light| match &*light {
                     Light::Directional(ref light) => Some(
                         pod::DirectionalLight {
@@ -222,8 +220,7 @@ impl<B: Backend> PerImageEnvironmentSub<B> {
                 .take(MAX_DIR_LIGHTS);
 
             let mut q2 = <(Read<Light>, Read<Transform>)>::query();
-            let spot_lights = q2
-                .iter(world)
+            let spot_lights = unsafe { q2.iter_unchecked(world) }
                 .filter_map(|(light, transform)| {
                     if let Light::Spot(ref light) = &*light {
                         Some(

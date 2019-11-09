@@ -219,7 +219,7 @@ impl<B: Backend, T: Tile, E: CoordinateEncoder, Z: DrawTiles2DBounds> RenderGrou
         let mut query = <(Read<TileMap<T, E>>)>::query()
             .filter(!component::<Hidden>() & !component::<HiddenPropagate>());
 
-        query.iter_entities(world).for_each(|(entity, tile_map)| {
+        unsafe { query.iter_entities_unchecked(world) }.for_each(|(entity, tile_map)| {
             let maybe_sheet = tile_map
                 .sprite_sheet
                 .as_ref()

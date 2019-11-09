@@ -228,7 +228,7 @@ where
             SyncDirection::LegionToSpecs => {
                 use legion::prelude::*;
                 let mut query = <(Write<L>)>::query();
-                for (entity, mut component) in query.iter_entities(&legion_state.world) {
+                for (entity, mut component) in query.iter_entities(&mut legion_state.world) {
                     if let Some(specs_entity) = bimap.read().unwrap().get_by_left(&entity) {
                         let new = if let Some(specs_component) = storage.get_mut(*specs_entity) {
                             (self.0)(

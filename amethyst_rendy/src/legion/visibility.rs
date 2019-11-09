@@ -76,16 +76,16 @@ pub fn build_visibility_sorting_system(world: &mut World) -> Box<dyn Schedulable
                 let origin = Point3::origin();
 
                 let (camera, camera_transform) = active_camera.entity.map_or_else(
-                    || {
+                    || unsafe {
                         camera_query1
-                            .iter_entities()
+                            .iter_entities_unchecked(world)
                             .nth(0)
                             .map(|args| args.1)
                             .expect("No cameras are currently added to the world!")
                     },
-                    |e| {
+                    |e| unsafe {
                         camera_query2
-                            .iter_entities()
+                            .iter_entities_unchecked(world)
                             .find(|(camera_entity, (_, _))| *camera_entity == e)
                             .map(|args| args.1)
                             .expect("Invalid entity set as ActiveCamera!")
@@ -100,7 +100,7 @@ pub fn build_visibility_sorting_system(world: &mut World) -> Box<dyn Schedulable
 
                 state.centroids.extend(
                     entity_query
-                        .iter_entities()
+                        .iter_entities(world)
                         .map(|(entity, transform)| {
                             let sphere = world.get_component::<BoundingSphere>(entity);
 
